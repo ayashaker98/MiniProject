@@ -1,30 +1,29 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[15]:
+# In[479]:
 
 
-########Parsing Lib File#######
 from liberty.parser import parse_liberty
 liberty_file = "/Users/ayashaker/Desktop/osu035.lib"
 library = parse_liberty(open(liberty_file).read())
-print(str(library))
+print(library)
 
 
-# In[312]:
+# In[480]:
 
 
 fname = "/Users/ayashaker/Desktop/rca4.rtlnopwr.v"
 
 
-# In[346]:
+# In[481]:
 
 
 #####Parsing Netlist##########
 import re
 
 
-# In[347]:
+# In[482]:
 
 
 moduledefintion = ""
@@ -56,7 +55,7 @@ for code in open(fname,"r"):
 NumberofCells = len(functions)
 
 
-# In[350]:
+# In[483]:
 
 
 dictList = []
@@ -67,7 +66,7 @@ for code in functions:
     
 
 
-# In[351]:
+# In[484]:
 
 
 for i in range(len(dictList)):
@@ -78,17 +77,19 @@ for i in range(len(dictList)):
         dictList[i][j] = n
 
 
-# In[352]:
+# In[485]:
 
 
 for i in range(len(dictList)):
-    n =  re.sub("\n", '', dictList[i][1])
+    n = dictList[i][1].split()
     dictList[i][1] = n
-
+for i in range(len(dictList)):
+    del dictList[i][1][0]
+    del dictList[i][1][len(dictList[i][1])-1]
         
 
 
-# In[ ]:
+# In[486]:
 
 
 dictList
