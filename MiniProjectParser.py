@@ -104,6 +104,7 @@ allpins[len(allpins)-1] = allpins[len(allpins)-1]._replace(direction = "output")
 
 Fanoutnumber = 0
 count  = 0
+FanoutCouple = namedtuple('Fanout', ['cell', 'fanout', 'status'])
 Fanout = []
 for l in range(len(allpins)):
     if (allpins[l].direction=="output"):
@@ -111,14 +112,16 @@ for l in range(len(allpins)):
         for h in range(len(allpins)):
             if (allpins[h].parameter == allpins[l].parameter):
                 Fanoutnumber = Fanoutnumber + 1
-        Fanout.append(Fanoutnumber)
+        Fanout.append(FanoutCouple(allpins[l].cell,Fanoutnumber,"none"))
         Fanoutnumber = 0
 
+for g in range(len(Fanout)):
+    if (Fanout[g].fanout > int(maxFanout)):
+        Fanout[g] = Fanout[g]._replace(status = "Violating")
+    else:
+        Fanout[g] = Fanout[g]._replace(status = "Not Violating")
+
 print(Fanout)
-print(len(Fanout))
-
-# for g in range(len(Fanout)):
-#     if (Fanout[g] > maxFanout):
-
+print(len(Fanout))    
 
 # print(select_cell(library, allpins[0].cell))
