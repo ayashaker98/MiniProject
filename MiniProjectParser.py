@@ -3,54 +3,44 @@
 
 # In[479]:
 
-
+from liberty.types import Group, select_cell, select_pin, select_timing_table
 from liberty.parser import parse_liberty
-liberty_file = "/Users/ayashaker/Desktop/osu035.lib"
+from collections import namedtuple
+import array
+liberty_file = "/Users/noha/Desktop/osu035.lib"
 library = parse_liberty(open(liberty_file).read())
-print(library)
+# print(library)
 
+fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
 
-# In[480]:
-
-
-fname = "/Users/ayashaker/Desktop/rca4.rtlnopwr.v"
-
-
-# In[481]:
-
-
-#####Parsing Netlist##########
 import re
-
-
-# In[482]:
-
 
 moduledefintion = ""
 inn = []
 out = []
 wire = []
-str = ""
+strmessage = ""
 functions = []
 for code in open(fname,"r"):
     line = code
     if("input" in line):
         line = re.sub("input", '', line) 
         inn.append(line)
-    elif("out" in line):
+    elif("output" in line):
         line = re.sub("output", '', line) 
         out.append(line)
     elif("wire" in line):
         line = re.sub("wire", '', line) 
         wire.append(line)
     elif("endmodule" in line):
-        str = "end of module"
+        strmessage = "end of module"
     elif ("module" in line):
         moduledefintion = line
     elif(line == "\n"):
         donothing = ""
     else:
         functions.append(line)
+
 
 NumberofCells = len(functions)
 
@@ -61,7 +51,7 @@ NumberofCells = len(functions)
 dictList = []
 for code in functions:
     n = code.split(maxsplit=2)
-    del n[1]
+    del n[0]
     dictList.append(n)
     
 
@@ -76,27 +66,30 @@ for i in range(len(dictList)):
         n =  re.sub(";", '', dictList[i][j])
         dictList[i][j] = n
 
-
-# In[485]:
-
-
 for i in range(len(dictList)):
     n = dictList[i][1].split()
     dictList[i][1] = n
 for i in range(len(dictList)):
     del dictList[i][1][0]
     del dictList[i][1][len(dictList[i][1])-1]
-        
+
+# print(dictList[0])
+# print(dictList[0][0])
+# print(NumberofCells)
 
 
-# In[486]:
+start = '.'
+end = '('
+end2 = ')'
+pins = namedtuple('pins', ['cell','pin', 'parameter', 'direction'])
+allpins = []
 
+for x in range(len(dictList)):
+    for y in range(len(dictList[x])):
+        for z in range(len(dictList[x][y])):
+            if (dictList[x][y][z][dictList[x][y][z].find(start)+len(start):dictList[x][y][z].rfind(end)] != ""):
+                allpins.append(pins(dictList[x][0], dictList[x][y][z][dictList[x][y][z].find(start)+len(start):dictList[x][y][z].rfind(end)], dictList[x][y][z][dictList[x][y][z].find(end)+len(end):dictList[x][y][z].rfind(end2)], "none"))
 
-dictList
+print(allpins[0])
 
-
-# In[ ]:
-
-
-
-
+print(select_cell(library, allpins[0].cell))
