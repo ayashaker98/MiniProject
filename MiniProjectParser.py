@@ -122,6 +122,6 @@ for g in range(len(Fanout)):
         Fanout[g] = Fanout[g]._replace(status = "Not Violating")
 
 print(Fanout)
-print(len(Fanout))    
+# print(len(Fanout))    
 
 # print(select_cell(library, allpins[0].cell))
