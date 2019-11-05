@@ -15,6 +15,8 @@ fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
 
 import re
 
+maxFanout = input("Please Enter the maximum Fanout for any cell : ") 
+
 moduledefintion = ""
 inn = []
 out = []
@@ -90,6 +92,33 @@ for x in range(len(dictList)):
             if (dictList[x][y][z][dictList[x][y][z].find(start)+len(start):dictList[x][y][z].rfind(end)] != ""):
                 allpins.append(pins(dictList[x][0], dictList[x][y][z][dictList[x][y][z].find(start)+len(start):dictList[x][y][z].rfind(end)], dictList[x][y][z][dictList[x][y][z].find(end)+len(end):dictList[x][y][z].rfind(end2)], "none"))
 
-print(allpins[0])
 
-print(select_cell(library, allpins[0].cell))
+for f in range(len(allpins)-1):
+    if (allpins[f].cell == allpins[f+1].cell):
+        allpins[f] = allpins[f]._replace(direction = "input")
+    else:
+        allpins[f] = allpins[f]._replace(direction = "output")
+
+allpins[len(allpins)-1] = allpins[len(allpins)-1]._replace(direction = "output")
+# print(allpins)
+
+Fanoutnumber = 0
+count  = 0
+Fanout = []
+for l in range(len(allpins)):
+    if (allpins[l].direction=="output"):
+        count = count + 1
+        for h in range(len(allpins)):
+            if (allpins[h].parameter == allpins[l].parameter):
+                Fanoutnumber = Fanoutnumber + 1
+        Fanout.append(Fanoutnumber)
+        Fanoutnumber = 0
+
+print(Fanout)
+print(len(Fanout))
+
+# for g in range(len(Fanout)):
+#     if (Fanout[g] > maxFanout):
+
+
+# print(select_cell(library, allpins[0].cell))
