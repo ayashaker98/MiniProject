@@ -15,7 +15,7 @@ fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
 
 import re
 
-maxFanout = input("Please Enter the maximum Fanout for any cell : ") 
+maxFanout = 4 #input("Please Enter the maximum Fanout for any cell : ") 
 
 moduledefintion = ""
 inn = []
@@ -121,7 +121,18 @@ for g in range(len(Fanout)):
     else:
         Fanout[g] = Fanout[g]._replace(status = "Not Violating")
 
-print(Fanout)
+# print(Fanout)
 # print(len(Fanout))    
+# print(allpins[6].pin.split('_')[0])
+cellgroup = library.get_group('cell', allpins[5].cell.split('_')[0])
+pin = cellgroup.get_group('pin', allpins[5].pin)
+# print(allpins[5].pin)
+timing_table = select_timing_table(pin, allpins[4].pin, 'cell_fall')
+# print(timing_table)
+timing_table_transition = timing_table.get_array("index_1")
+timing_table_capacitance = timing_table.get_array("index_2")
+timing_table_values = timing_table.get_array("values")
+print(timing_table_transition)
+print(timing_table_capacitance)
+print(timing_table_values)
 
-# print(select_cell(library, allpins[0].cell))
