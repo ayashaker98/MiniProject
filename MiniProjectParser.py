@@ -7,6 +7,7 @@ from liberty.types import Group, select_cell, select_pin, select_timing_table
 from liberty.parser import parse_liberty
 from collections import namedtuple
 import array
+from scipy.interpolate import interp1d
 liberty_file = "/Users/noha/Desktop/osu035.lib"
 library = parse_liberty(open(liberty_file).read())
 # print(library)
@@ -132,7 +133,20 @@ timing_table = select_timing_table(pin, allpins[4].pin, 'cell_fall')
 timing_table_transition = timing_table.get_array("index_1")
 timing_table_capacitance = timing_table.get_array("index_2")
 timing_table_values = timing_table.get_array("values")
-print(timing_table_transition)
-print(timing_table_capacitance)
-print(timing_table_values)
 
+finalpins = namedtuple('finalpins', ['cellname', 'capacitance','pinwithmaxcap'])
+CapPins = []
+MaxCapPins = []
+for i in range(len(Fanout)):
+    for j in range(len(allpins)):
+        if(Fanout[i].cell == allpins[j].cell):
+            cgroup = library.get_group('cell', allpins[j].cell.split('_')[0])
+            pingroup = cgroup.get_group('pin', allpins[j].pin)
+            cap = pingroup.__getitem__('capacitance')
+            CapPins.append(finalpins(allpins[j].cell, cap, allpins[j].pin))
+    MaxCapPins.append(finalpins(CapPins[0].cellname, max(CapPins, key=lambda k: k.capacitance).capacitance, max(CapPins, key=lambda k: k.capacitance).pinwithmaxcap))
+    CapPins.clear()
+
+# print(timing_table_transition)
+# print(timing_table_capacitance)
+# print(timing_table_values)
