@@ -3,7 +3,9 @@ from liberty.types import Group, select_cell, select_pin, select_timing_table
 from liberty.parser import parse_liberty
 from collections import namedtuple
 import array
-from scipy.interpolate import interp1d
+import numpy
+from scipy.spatial.distance import euclidean
+from scipy.interpolate import interp1d, interp2d
 liberty_file = "/Users/noha/Desktop/osu035.lib"
 library = parse_liberty(open(liberty_file).read())
 fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
@@ -11,6 +13,10 @@ fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
 import re
 
 maxFanout = 3 #input("Please Enter the maximum Fanout for any cell : ") 
+maxDelay = 0.01 #input("Please Enter the maximum Delay for any cell : ") 
+
+def findMiddle(input_list):
+    return(int((len(input_list) - 1)/2))
 
 moduledefintion = ""
 inn = []
@@ -116,17 +122,6 @@ for g in range(len(Fanout)):
     else:
         Fanout[g] = Fanout[g]._replace(status = "Not Violating")
 
-# print(Fanout)
-# print(len(Fanout))    
-# print(allpins[6].pin.split('_')[0])
-cellgroup = library.get_group('cell', allpins[5].cell.split('_')[0])
-pin = cellgroup.get_group('pin', allpins[5].pin)
-# print(allpins[5].pin)
-timing_table = select_timing_table(pin, allpins[4].pin, 'cell_fall')
-# print(timing_table)
-timing_table_transition = timing_table.get_array("index_1")
-timing_table_capacitance = timing_table.get_array("index_2")
-timing_table_values = timing_table.get_array("values")
 
 finalpins = namedtuple('finalpins', ['cellname', 'capacitance','pinwithmaxcap'])
 CapPins = []
@@ -158,16 +153,78 @@ for i in range(len(Fanoutpairs)):
             Fanoutpairs[i]= Fanoutpairs[i]._replace(inputcap = CapPins[j].capacitance)
 
 FanoutSum = 0
-Fanout4 = namedtuple('Fanout4', ['cell', 'load'])
+Fanout4 = namedtuple('Fanout4', ['cell', 'load', 'outputpin', 'relatedpin'])
 CellwithLoad = []
 for f in range(len(Fanout)):
     for r in range(len(Fanoutpairs)):
         if (Fanout[f].cell == Fanoutpairs[r].gate1):
             FanoutSum = FanoutSum + Fanoutpairs[r].inputcap
-    CellwithLoad.append(Fanout4(Fanout[f].cell, FanoutSum))
+    CellwithLoad.append(Fanout4(Fanout[f].cell, FanoutSum, 'none', 'none'))
     FanoutSum = 0
-# print(CellwithLoad)
+# print(CellwithLoad[0].load)
 
-print(timing_table_transition)
-print(timing_table_capacitance)
-print(timing_table_values)
+
+
+
+# print(findMiddle(timing_table_transition[0]))
+# print(timing_table_capacitance)
+# print(timing_table_values)
+
+for u in range(len(CellwithLoad)):
+    for g in range(len(allpins)):
+        if(CellwithLoad[u].cell == allpins[g].cell):
+            if(allpins[g].direction == "output"):
+                CellwithLoad[u] = CellwithLoad[u]._replace(outputpin = allpins[g].pin)
+            elif((allpins[g].direction == "input") and (CellwithLoad[u].relatedpin == 'none')):
+                CellwithLoad[u] = CellwithLoad[u]._replace(relatedpin = allpins[g].pin)
+
+
+rise_delay = -1
+fall_delay = -1
+minIndex1 = 0
+minIndex2 = 0
+distance = []
+cell_delay_things = namedtuple('cell_delay_things', ['cell', 'delay'])
+cell_delay = []
+
+for i in range(len(CellwithLoad)):
+    cellgroup = library.get_group('cell', CellwithLoad[i].cell.split('_')[0])
+    pin = cellgroup.get_group('pin', CellwithLoad[i].outputpin)
+    #for the rise delays
+    timing_table_rise = select_timing_table(pin, CellwithLoad[i].relatedpin, 'cell_rise')
+    timing_table_transition_rise = timing_table_rise.get_array("index_1")
+    timing_table_capacitance_rise = timing_table_rise.get_array("index_2")
+    timing_table_values_rise = timing_table_rise.get_array("values")
+    #for the fall delays
+    timing_table_fall = select_timing_table(pin, CellwithLoad[i].relatedpin, 'cell_fall')
+    timing_table_transition_fall = timing_table_fall.get_array("index_1")
+    timing_table_capacitance_fall = timing_table_fall.get_array("index_2")
+    timing_table_values_fall = timing_table_fall.get_array("values")
+    for j in range(len(timing_table_capacitance_rise[0])):
+        if (CellwithLoad[i].load == timing_table_capacitance_rise[0][j]):
+            rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][j]
+            print("Rise Delay was set successfuly")
+    if(rise_delay == -1):
+        # print("Rise Delay not set, must do interpolation or extrapolation!!!")
+        for k in range(len(timing_table_capacitance_rise[0])):
+            distance.append(euclidean(CellwithLoad[i].load,timing_table_capacitance_rise[0][k]))
+        minIndex1 = numpy.argmin(distance)
+        distance[minIndex1] = 999999
+        minIndex2 = numpy.argmin(distance)
+        # print(minIndex1)
+        distance.clear()
+        xvals = [timing_table_capacitance_rise[0][minIndex1], timing_table_capacitance_rise[0][minIndex2]]
+        yvals = [timing_table_transition_rise[0][findMiddle(timing_table_transition_rise[0])]]
+        # print(yvals)
+        fvals = [timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][minIndex1], timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][minIndex2]]
+
+        # print(xvals)
+        # print(yvals)
+        # print(fvals)
+        # print(fvals)
+        print(interp2d(xvals, yvals, fvals))
+
+        # cell_delay.append(cell_delay_things(CellwithLoad[i].cell,interp2d(xvals,findMiddle(timing_table_transition_rise[0]), fvals)))
+
+
+
