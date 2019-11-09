@@ -210,6 +210,13 @@ for i in range(len(CellwithLoad)):
         if (CellwithLoad[i].load == timing_table_capacitance_rise[0][j]):
             rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][j]
             print("Rise Delay was set successfuly")
+
+    if(CellwithLoad[i].load == 0):
+        rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])]
+        fall_delay = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])]
+        cell_delay_rise.append(cell_delay_things(CellwithLoad[i].cell, timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])], 'none'))
+        cell_delay_fall.append(cell_delay_things(CellwithLoad[i].cell, timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])], 'none'))
+
     if(rise_delay == -1):
         # print("Rise Delay not set, must do interpolation or extrapolation!!!")
         xvals = timing_table_capacitance_rise[0]
@@ -235,6 +242,8 @@ for i in range(len(CellwithLoad)):
         # print("FALL")
         # print(interp_fall(CellwithLoad[i].load))
         cell_delay_fall.append(cell_delay_things(CellwithLoad[i].cell,interp_fall(CellwithLoad[i].load), 'none'))
+    rise_delay = -1
+    fall_delay = -1
 
 
 for q in range(len(cell_delay_fall)):
@@ -247,5 +256,8 @@ for g in range(len(cell_delay)):
     else:
         cell_delay[g] = cell_delay[g]._replace(status = "Not Violating")
 
+
 #cell_delay has the final delay of each cell with a space saying if its violated or not
 #Fanout has the final fanout of each cell with a space saying if its violated or not
+
+
