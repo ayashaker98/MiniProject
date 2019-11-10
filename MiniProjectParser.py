@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[841]:
+# In[457]:
 
 
 
@@ -13,9 +13,9 @@ import numpy
 from scipy.spatial.distance import euclidean
 from scipy import arange, array, exp
 from scipy.interpolate import interp1d, interp2d, InterpolatedUnivariateSpline
-liberty_file = "/Users/ayashaker/Desktop/osu035.lib"
+liberty_file = "/Users/noha/Desktop/osu035.lib"
 library = parse_liberty(open(liberty_file).read())
-fname = "/Users/ayashaker/Desktop/rca4.rtlnopwr.v"
+fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
 
 import re
 
@@ -101,14 +101,17 @@ for x in range(len(dictList)):
                 allpins.append(pins(dictList[x][0], dictList[x][y][z][dictList[x][y][z].find(start)+len(start):dictList[x][y][z].rfind(end)], dictList[x][y][z][dictList[x][y][z].find(end)+len(end):dictList[x][y][z].rfind(end2)], "none"))
 
 
-for f in range(len(allpins)-1):
-    if (allpins[f].cell == allpins[f+1].cell):
+for f in range(len(allpins)):
+    cellgp = library.get_group('cell', allpins[f].cell.split('_')[0])
+    pingp = cellgp.get_group('pin', allpins[f].pin)
+    direct = pingp.__getitem__('direction')
+    if (direct == 'input'):
         allpins[f] = allpins[f]._replace(direction = "input")
     else:
         allpins[f] = allpins[f]._replace(direction = "output")
 
-allpins[len(allpins)-1] = allpins[len(allpins)-1]._replace(direction = "output")
-# print(allpins)
+# allpins[len(allpins)-1] = allpins[len(allpins)-1]._replace(direction = "output")
+
 
 Fanoutnumber = -1
 count  = 0
@@ -197,7 +200,6 @@ cell_delay_things = namedtuple('cell_delay_things', ['cell', 'delay', 'status','
 cell_delay_rise = []
 cell_delay_fall = []
 cell_delay = []
-
 for i in range(len(CellwithLoad)):
     cellgroup = library.get_group('cell', CellwithLoad[i].cell.split('_')[0])
     pin = cellgroup.get_group('pin', CellwithLoad[i].outputpin)
@@ -267,11 +269,11 @@ for g in range(len(cell_delay)):
 #Fanout has the final fanout of each cell with a space saying if its violated or not
 
 
-# In[660]:
+# In[627]:
 
 
 ###########################Sizing Up#########################################
-f = open("/Users/ayashaker/Desktop/osu035.lib", "r")
+f = open("/Users/noha/Desktop/osu035.lib", "r")
 librarycells = namedtuple('librarycells', ['cell', 'area'])
 libcell =[]
 allcells = []
@@ -299,11 +301,29 @@ for j in range(len(repl)):
     if(cell_delay[j].status == 'Violating'):
         for x in range(len(alllibcells)):
             if((repl[j].origgate == alllibcells[x].cell[0:len(alllibcells[x].cell)-1])&(repl[j].num<alllibcells[x].cell[len(alllibcells[x].cell)-1])):
-                repl[j] = repl[j]._replace(newcell=alllibcells[x].cell,newarea =alllibcells[x].area)
+                repl[j] = repl[j]._replace(newcell=alllibcells[x].cell,newarea =alllibcells[x].area)  
 ############################################################################   
 
+for r in range(len(repl)):
+    if(repl[r].newcell != 'none'):
+        repl[r] = repl[r]._replace(newcell = repl[r].newcell+'_new'+str(r))
 
-# In[842]:
+NewCellWithLoad = []
+#Fanout4 = namedtuple('Fanout4', ['cell', 'load', 'outputpin', 'relatedpin'])
+
+# print(cell_delay)
+
+# for j in range(len(CellwithLoad)):
+#     if (repl[j].library == CellwithLoad[j].cell.split('_')[0]):
+#         if (repl[j].newcell == 'none'):
+#             NewCellWithLoad.append(Fanout4(repl[j].library, CellwithLoad[j].load, CellwithLoad[j].outputpin, CellwithLoad[j].relatedpin))
+#             # print(str(j)+"in")
+#         else:
+#             NewCellWithLoad.append(Fanout4(repl[j].newcell, CellwithLoad[j].load, CellwithLoad[j].outputpin, CellwithLoad[j].relatedpin))
+
+# for i in range(len(NewCellWithLoad)):
+#     newcellgroup = library.get_group('cell', NewCellWithLoad[i].cell.split('_')[0])
+#     newpin = newcellgroup.get_group('pin', NewCellWithLoad[i].outputpin)
 
 
 ###########################Add Buffers#########################################
@@ -318,43 +338,34 @@ for i in range(len(Fanout)):
     if(Fanout[i].status == 'Violating'):
         maxim=maxfanout
         r = Fanout[i].fanout
-        print("Fanout"+str(r))
         numBuf = r/maxfanout
-        print("numBuf"+str(numBuf))
-        
-     
         flag = isinstance(numBuf, float)
         if((r%maxfanout) != 0):
-            print("in")
             numBuf = int(numBuf)+1
         else:
              numBuf = int(numBuf)
-        print("n:"+str(numBuf))
         numbf2=numBuf
-        if(numBuf>Fanout[i].fanout):
-            print("inn")
-            while(numBuf!=0):
-                newverilog.append("BUFX4 BUFX4_"+ str(count)+"_added "+ "(.A( "+str(count)+"_W), "+".Y("+str(count)+"_WY));")
-                count = count+1
-                numBuf = numBuf - 1 
-        elif(numBuf == Fanout[i].fanout):
-            print("innn")
+        if(maxfanout == Fanout[i].fanout):
+            print(maxfanout)
             while(numBuf!=0):
                 newverilog.append("BUFX4 BUFX4_"+ str(count)+"_added "+ "(.A( "+str(count)+"_W), "+".Y("+str(count)+"_OUT));")
                 count = count+1
-                numBuf = numBuf - 1 
+                numBuf = numBuf - 1
+        if(maxfanout>Fanout[i].fanout):
+            print(numBuf)
+            print(maxfanout)
+            while(numBuf!=0):
+                newverilog.append("BUFX4 BUFX4_"+ str(count)+"_added "+ "(.A( "+str(count)+"_W), "+".Y("+str(count)+"_WY));")
+                count = count+1
+                numBuf = numBuf - 1  
         else:
-            print("innnn")
             maxim = numbf2
             while(maxim!=0):
                 for j in range(len(allpins)):
-                    print(j)
                     if((allpins[j].cell == Fanout[i].cell)&(allpins[j].direction=='output')):
-                        print(allpins[j])
-                        print(Fanout[i])
                         newverilog.append("BUFX4 BUFX4_"+ str(count)+"_added "+ "(.A( "+allpins[j].parameter+"), "+".Y("+str(count)+"_WY));")
                         count = count+1
                         maxim = maxim - 1
-                        numBuf = numBuf - 1
-                    
-
+                        numBuf = numBuf - 1 
+            # print(maxfanout)
+print(newverilog)
