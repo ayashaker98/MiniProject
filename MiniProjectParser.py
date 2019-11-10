@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[457]:
+# In[841]:
 
 
 
@@ -267,7 +267,7 @@ for g in range(len(cell_delay)):
 #Fanout has the final fanout of each cell with a space saying if its violated or not
 
 
-# In[627]:
+# In[660]:
 
 
 ###########################Sizing Up#########################################
@@ -300,6 +300,61 @@ for j in range(len(repl)):
         for x in range(len(alllibcells)):
             if((repl[j].origgate == alllibcells[x].cell[0:len(alllibcells[x].cell)-1])&(repl[j].num<alllibcells[x].cell[len(alllibcells[x].cell)-1])):
                 repl[j] = repl[j]._replace(newcell=alllibcells[x].cell,newarea =alllibcells[x].area)
-    
 ############################################################################   
+
+
+# In[842]:
+
+
+###########################Add Buffers#########################################
+count1 = 0
+count=0
+maxfanout = 3
+newverilog = []
+inp = ""
+out = ""
+b = maxfanout
+for i in range(len(Fanout)):
+    if(Fanout[i].status == 'Violating'):
+        maxim=maxfanout
+        r = Fanout[i].fanout
+        print("Fanout"+str(r))
+        numBuf = r/maxfanout
+        print("numBuf"+str(numBuf))
+        
+     
+        flag = isinstance(numBuf, float)
+        if((r%maxfanout) != 0):
+            print("in")
+            numBuf = int(numBuf)+1
+        else:
+             numBuf = int(numBuf)
+        print("n:"+str(numBuf))
+        numbf2=numBuf
+        if(numBuf>Fanout[i].fanout):
+            print("inn")
+            while(numBuf!=0):
+                newverilog.append("BUFX4 BUFX4_"+ str(count)+"_added "+ "(.A( "+str(count)+"_W), "+".Y("+str(count)+"_WY));")
+                count = count+1
+                numBuf = numBuf - 1 
+        elif(numBuf == Fanout[i].fanout):
+            print("innn")
+            while(numBuf!=0):
+                newverilog.append("BUFX4 BUFX4_"+ str(count)+"_added "+ "(.A( "+str(count)+"_W), "+".Y("+str(count)+"_OUT));")
+                count = count+1
+                numBuf = numBuf - 1 
+        else:
+            print("innnn")
+            maxim = numbf2
+            while(maxim!=0):
+                for j in range(len(allpins)):
+                    print(j)
+                    if((allpins[j].cell == Fanout[i].cell)&(allpins[j].direction=='output')):
+                        print(allpins[j])
+                        print(Fanout[i])
+                        newverilog.append("BUFX4 BUFX4_"+ str(count)+"_added "+ "(.A( "+allpins[j].parameter+"), "+".Y("+str(count)+"_WY));")
+                        count = count+1
+                        maxim = maxim - 1
+                        numBuf = numBuf - 1
+                    
 
