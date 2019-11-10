@@ -1,3 +1,9 @@
+#!/usr/bin/env python
+# coding: utf-8
+
+# In[457]:
+
+
 
 from liberty.types import Group, select_cell, select_pin, select_timing_table
 from liberty.parser import parse_liberty
@@ -7,9 +13,9 @@ import numpy
 from scipy.spatial.distance import euclidean
 from scipy import arange, array, exp
 from scipy.interpolate import interp1d, interp2d, InterpolatedUnivariateSpline
-liberty_file = "/Users/noha/Desktop/osu035.lib"
+liberty_file = "/Users/ayashaker/Desktop/osu035.lib"
 library = parse_liberty(open(liberty_file).read())
-fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
+fname = "/Users/ayashaker/Desktop/rca4.rtlnopwr.v"
 
 import re
 
@@ -187,7 +193,7 @@ minIndex2 = 0
 o = 0
 distance = []
 distance2 = []
-cell_delay_things = namedtuple('cell_delay_things', ['cell', 'delay', 'status'])
+cell_delay_things = namedtuple('cell_delay_things', ['cell', 'delay', 'status','library'])
 cell_delay_rise = []
 cell_delay_fall = []
 cell_delay = []
@@ -214,8 +220,8 @@ for i in range(len(CellwithLoad)):
     if(CellwithLoad[i].load == 0):
         rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])]
         fall_delay = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])]
-        cell_delay_rise.append(cell_delay_things(CellwithLoad[i].cell, timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])], 'none'))
-        cell_delay_fall.append(cell_delay_things(CellwithLoad[i].cell, timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])], 'none'))
+        cell_delay_rise.append(cell_delay_things(CellwithLoad[i].cell, timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])], 'none','none'))
+        cell_delay_fall.append(cell_delay_things(CellwithLoad[i].cell, timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])], 'none','none'))
 
     if(rise_delay == -1):
         # print("Rise Delay not set, must do interpolation or extrapolation!!!")
@@ -225,7 +231,7 @@ for i in range(len(CellwithLoad)):
         interp_rise = InterpolatedUnivariateSpline(xvals, fvals)
         # print("RISE")
         # print(interp_rise(CellwithLoad[i].load))
-        cell_delay_rise.append(cell_delay_things(CellwithLoad[i].cell,interp_rise(CellwithLoad[i].load), 'none'))
+        cell_delay_rise.append(cell_delay_things(CellwithLoad[i].cell,interp_rise(CellwithLoad[i].load), 'none','none'))
 
     #For Fall
     for j in range(len(timing_table_capacitance_fall[0])):
@@ -241,14 +247,14 @@ for i in range(len(CellwithLoad)):
         interp_fall = InterpolatedUnivariateSpline(xvals_fall, fvals_fall)
         # print("FALL")
         # print(interp_fall(CellwithLoad[i].load))
-        cell_delay_fall.append(cell_delay_things(CellwithLoad[i].cell,interp_fall(CellwithLoad[i].load), 'none'))
+        cell_delay_fall.append(cell_delay_things(CellwithLoad[i].cell,interp_fall(CellwithLoad[i].load), 'none','none'))
     rise_delay = -1
     fall_delay = -1
 
 
 for q in range(len(cell_delay_fall)):
     maxFallRise = max(cell_delay_fall[q].delay, cell_delay_rise[q].delay)
-    cell_delay.append(cell_delay_things(cell_delay_fall[q].cell, maxFallRise, 'none'))
+    cell_delay.append(cell_delay_things(cell_delay_fall[q].cell, maxFallRise, 'none','none'))
 
 for g in range(len(cell_delay)):
     if (cell_delay[g].delay > float(maxDelay)):
@@ -260,4 +266,40 @@ for g in range(len(cell_delay)):
 #cell_delay has the final delay of each cell with a space saying if its violated or not
 #Fanout has the final fanout of each cell with a space saying if its violated or not
 
+
+# In[627]:
+
+
+###########################Sizing Up#########################################
+f = open("/Users/ayashaker/Desktop/osu035.lib", "r")
+librarycells = namedtuple('librarycells', ['cell', 'area'])
+libcell =[]
+allcells = []
+count = 0
+for x in f:
+    if("cell (" in x):
+        allcells.append(x.split('cell (')[1])
+allcells2 = namedtuple('allcells2', ['cell', 'area'])
+cells = []
+alllibcells = []
+
+for i in range(len(allcells)):
+    alllibcells.append(allcells2(allcells[i].split(')')[0],0))
+    cells.append(allcells[i].split(')')[0])  
+for i in range(len(alllibcells)):
+    n = library.get_group('cell', cells[i])
+    alllibcells[i] = alllibcells[i]._replace(area = n.__getitem__('area'))
+for i in range(len(cell_delay)):
+    cell_delay[i] =  cell_delay[i]._replace(library =cell_delay[i].cell.split('_')[0])
+replaceit = namedtuple('replaceit', ['origcell','origgate','num','newcell','newarea','library'])
+repl = []
+for r in range(len(cell_delay)):
+    repl.append(replaceit(cell_delay[r].cell,cell_delay[r].library[0:len(cell_delay[r].library)-1],cell_delay[r].library[len(cell_delay[r].library)-1],'none',0,cell_delay[r].cell.split('_')[0]))
+for j in range(len(repl)):
+    if(cell_delay[j].status == 'Violating'):
+        for x in range(len(alllibcells)):
+            if((repl[j].origgate == alllibcells[x].cell[0:len(alllibcells[x].cell)-1])&(repl[j].num<alllibcells[x].cell[len(alllibcells[x].cell)-1])):
+                repl[j] = repl[j]._replace(newcell=alllibcells[x].cell,newarea =alllibcells[x].area)
+    
+############################################################################   
 
