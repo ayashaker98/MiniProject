@@ -18,9 +18,9 @@ fname = "/Users/noha/Desktop/rca4.rtlnopwr.v"
 
 import re
 
-maxFanoutin = 3 #input("Please Enter the maximum Fanout for any cell : ") 
-maxDelay = 0.23 #input("Please Enter the maximum Delay for any cell : ") 
-option = 3 #input("Please Enter the number of the method you would like to use: 1)Sizing Up.    2)Cloning.    3)Adding Buffers ") 
+maxFanoutin = input("Please Enter the maximum Fanout for any cell : ") 
+maxDelay = input("Please Enter the maximum Delay for any cell : ") 
+option = input("Please Enter the number of the method you would like to use: 1)Sizing Up.    2)Cloning.    3)Adding Buffers ") 
 maxFanout = int(maxFanoutin)
 
 def findMiddle(input_list):
@@ -83,7 +83,6 @@ for i in range(len(dictList)):
 for i in range(len(dictList)):
     del dictList[i][1][0]
     del dictList[i][1][len(dictList[i][1])-1]
-
 
 start = '.'
 end = '('
@@ -357,7 +356,6 @@ def addBuffers():
                     for p in range(len(allpins)):########Find input for first stage
                                     if((allpins[p].cell == Fanout[i].cell)&(allpins[p].direction=='output')):
                                         Buf.append(Bufferadded('BUFX4 ',"BUFX4_"+ str(count)+"_added " ,allpins[p].parameter,str(count) ))
-
                                         keep.append(KeepTrack(str(count),"none","none",Stage,0,0,'none'))
                                         count = count +1
                                         nmbf=nmbf-1
@@ -507,18 +505,19 @@ def Cloning(functions, dictList, allpins, Fanout):
                         clonesstr = clonesstr + Fanout[r].cell.split('_')[0]+" "+Fanout[r].cell+"_cloned"+str(r)+ " "+ inoutstr
                         originalclone.append(clonesstr)   ##cloning the violating cells
                         inoutstr = ""
-                libcell = clonesstr.split(' ')[0]
-                cellinstance = clonesstr.split(' ')[1]
-                params = clonesstr.split(' ')[2]
-                for o in range(len(params)):
-                    if(params[o] == '.'):
-                        paramsCounter = paramsCounter + 1
-                for p in range(paramsCounter):
-                    paramslist.append(paramstuple(cellinstance,params[params.find(startp)+len(startp):params.find(endp)], 'none', 'none', 'none'))
-                    params = params.replace(params[params.find(startp)+len(startp):params.find(endp)], '')
-                    params = params.replace(startp, '', 1)
-                    params = params.replace(endp, '', 1)
-                    
+                if(clonesstr != ''):
+                    libcell = clonesstr.split(' ')[0]
+                    cellinstance = clonesstr.split(' ')[1]
+                    params = clonesstr.split(' ')[2]
+                    for o in range(len(params)):
+                        if(params[o] == '.'):
+                            paramsCounter = paramsCounter + 1
+                    for p in range(paramsCounter):
+                        paramslist.append(paramstuple(cellinstance,params[params.find(startp)+len(startp):params.find(endp)], 'none', 'none', 'none'))
+                        params = params.replace(params[params.find(startp)+len(startp):params.find(endp)], '')
+                        params = params.replace(startp, '', 1)
+                        params = params.replace(endp, '', 1)
+                        
                 clonesstr = ""
                 paramsCounter = 0
     ##analyzing the cloned cells and specifying their pins and parameters
@@ -546,7 +545,7 @@ def Cloning(functions, dictList, allpins, Fanout):
     for t in range(len(paramslist)):
         allpins_clones.append(pins_clones(paramslist[t].cell, paramslist[t].pin, paramslist[t].param, paramslist[t].direction, True))
         otherallpins.append(pins_clones(paramslist[t].cell, paramslist[t].pin, paramslist[t].param, paramslist[t].direction, True))
-
+    
     ##changing the input of a cell to be the output of one of the clones
     for j in range(len(allpins_clones)):  
         if(allpins_clones[j].cloneflag == True):
@@ -582,8 +581,43 @@ def Cloning(functions, dictList, allpins, Fanout):
 
 
     for g in range(len(originalclone)):
-        functions.append(originalclone[g])
+        functions.append(originalclone[g]+"\n")
     
+    # print(allpins_clones[0])
+    ###############printing the modified netlist after cloning###############
+    with open('Netlist_After_cloning.txt', 'w') as f:
+        for linenet in functions:
+            f.write(str(linenet)+"\n")
+
+    # with open('allpins2.txt', 'w') as f:
+    #     for linenet in otherallpins:
+    #         f.write(str(linenet)+"\n")
+    
+    fancounter = -1
+    count  = 0
+    FanoutCouple = namedtuple('Fanout', ['cell', 'fanout', 'status'])
+    Fanoutreturn = []
+    for l in range(len(otherallpins)):
+        if (otherallpins[l].direction=="output"):
+            count = count + 1
+            for h in range(len(otherallpins)):
+                if (otherallpins[h].parameter == otherallpins[l].parameter):
+                    fancounter = fancounter + 1
+            Fanoutreturn.append(FanoutCouple(otherallpins[l].cell,fancounter,"none")) #calculating the fanout of each cell before enhancement
+            fancounter = -1
+
+    #checking wether or not the Fanout of each cell violates the maximum fanout
+    for g in range(len(Fanoutreturn)):
+        if (Fanoutreturn[g].fanout > maxFanout):
+            Fanoutreturn[g] = Fanoutreturn[g]._replace(status = "Violating")
+        else:
+            Fanoutreturn[g] = Fanoutreturn[g]._replace(status = "Not Violating")
+    
+    stopingflag = True
+    for pl in range(len(Fanoutreturn)):
+        if(Fanoutreturn[pl].status == "Violating"):
+            stopingflag = False
+
     #####finding the number of cells of each type for the bonus###########################
     numoftypescl = namedtuple('numoftypes', ['cell', 'num'])
     typeslistcl = []
@@ -655,76 +689,108 @@ def Cloning(functions, dictList, allpins, Fanout):
     cell_delay_fall = []
     cell_delay = []
     for i in range(len(CellwithLoadcl)):
-        cellgroup = library.get_group('cell', CellwithLoadcl[i].cell.split('_')[0])
-        pin = cellgroup.get_group('pin', CellwithLoadcl[i].outputpin)
-        ##################timing tables for the rise delays################
-        timing_table_rise = select_timing_table(pin, CellwithLoadcl[i].relatedpin, 'cell_rise')
-        timing_table_transition_rise = timing_table_rise.get_array("index_1")
-        timing_table_capacitance_rise = timing_table_rise.get_array("index_2")
-        timing_table_values_rise = timing_table_rise.get_array("values")
-        ##################timing tables for the fall delays#################
-        timing_table_fall = select_timing_table(pin, CellwithLoadcl[i].relatedpin, 'cell_fall')
-        timing_table_transition_fall = timing_table_fall.get_array("index_1")
-        timing_table_capacitance_fall = timing_table_fall.get_array("index_2")
-        timing_table_values_fall = timing_table_fall.get_array("values")
-        ###################For calculating Rise delay#######################
-        for j in range(len(timing_table_capacitance_rise[0])):
-            if (CellwithLoadcl[i].load == timing_table_capacitance_rise[0][j]):
-                rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][j]
-                print("Rise Delay was set successfuly")
+        if(CellwithLoadcl[i].outputpin != 'none'):
+            cellgroup = library.get_group('cell', CellwithLoadcl[i].cell.split('_')[0])
+            # print(CellwithLoadcl[i].outputpin)
+            pin = cellgroup.get_group('pin', CellwithLoadcl[i].outputpin)
+            ##################timing tables for the rise delays################
+            timing_table_rise = select_timing_table(pin, CellwithLoadcl[i].relatedpin, 'cell_rise')
+            timing_table_transition_rise = timing_table_rise.get_array("index_1")
+            timing_table_capacitance_rise = timing_table_rise.get_array("index_2")
+            timing_table_values_rise = timing_table_rise.get_array("values")
+            ##################timing tables for the fall delays#################
+            timing_table_fall = select_timing_table(pin, CellwithLoadcl[i].relatedpin, 'cell_fall')
+            timing_table_transition_fall = timing_table_fall.get_array("index_1")
+            timing_table_capacitance_fall = timing_table_fall.get_array("index_2")
+            timing_table_values_fall = timing_table_fall.get_array("values")
+            ###################For calculating Rise delay#######################
+            for j in range(len(timing_table_capacitance_rise[0])):
+                if (CellwithLoadcl[i].load == timing_table_capacitance_rise[0][j]):
+                    rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][j]
+                    print("Rise Delay was set successfuly")
 
-        if(CellwithLoadcl[i].load == 0):     ###if the output wire of the cell is an output to the medule we take the middle delay from the table
-            rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])]
-            fall_delay = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])]
-            cell_delay_rise.append(cell_delay_things(CellwithLoadcl[i].cell, timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])], 'none','none'))
-            cell_delay_fall.append(cell_delay_things(CellwithLoadcl[i].cell, timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])], 'none','none'))
+            if(CellwithLoadcl[i].load == 0):     ###if the output wire of the cell is an output to the medule we take the middle delay from the table
+                rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])]
+                fall_delay = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])]
+                cell_delay_rise.append(cell_delay_things(CellwithLoadcl[i].cell, timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])], 'none','none'))
+                cell_delay_fall.append(cell_delay_things(CellwithLoadcl[i].cell, timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])], 'none','none'))
 
-        if(rise_delay == -1):      #####if the capacitance was not found in the table, then we must do interpolation or extrapolation
-            xvals = timing_table_capacitance_rise[0]
-            yvals = [timing_table_transition_rise[0][2]]
-            fvals = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])]
-            interp_rise = InterpolatedUnivariateSpline(xvals, fvals)
-            cell_delay_rise.append(cell_delay_things(CellwithLoadcl[i].cell,interp_rise(CellwithLoadcl[i].load), 'none','none'))
+            if(rise_delay == -1):      #####if the capacitance was not found in the table, then we must do interpolation or extrapolation
+                xvals = timing_table_capacitance_rise[0]
+                yvals = [timing_table_transition_rise[0][2]]
+                fvals = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])]
+                interp_rise = InterpolatedUnivariateSpline(xvals, fvals)
+                cell_delay_rise.append(cell_delay_things(CellwithLoadcl[i].cell,interp_rise(CellwithLoadcl[i].load), 'none','none'))
 
-        ###################For calculating Fall delay#######################
-        for j in range(len(timing_table_capacitance_fall[0])):
-            if (CellwithLoadcl[i].load == timing_table_capacitance_fall[0][j]):
-                fall_delay = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][j]
-                print("Fall Delay was set successfuly")
+            ###################For calculating Fall delay#######################
+            for j in range(len(timing_table_capacitance_fall[0])):
+                if (CellwithLoadcl[i].load == timing_table_capacitance_fall[0][j]):
+                    fall_delay = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][j]
+                    print("Fall Delay was set successfuly")
 
-        if(fall_delay == -1):  #####if the capacitance was not found in the table, then we must do interpolation or extrapolation
-            xvals_fall = timing_table_capacitance_fall[0]
-            yvals_fall = [timing_table_transition_fall[0][2]]
-            fvals_fall = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])]
-            interp_fall = InterpolatedUnivariateSpline(xvals_fall, fvals_fall)
-            cell_delay_fall.append(cell_delay_things(CellwithLoadcl[i].cell,interp_fall(CellwithLoadcl[i].load), 'none','none'))
-        rise_delay = -1
-        fall_delay = -1
+            if(fall_delay == -1):  #####if the capacitance was not found in the table, then we must do interpolation or extrapolation
+                xvals_fall = timing_table_capacitance_fall[0]
+                yvals_fall = [timing_table_transition_fall[0][2]]
+                fvals_fall = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])]
+                interp_fall = InterpolatedUnivariateSpline(xvals_fall, fvals_fall)
+                cell_delay_fall.append(cell_delay_things(CellwithLoadcl[i].cell,interp_fall(CellwithLoadcl[i].load), 'none','none'))
+            rise_delay = -1
+            fall_delay = -1
 
 
-    for q in range(len(cell_delay_fall)):
-        maxFallRise = max(cell_delay_fall[q].delay, cell_delay_rise[q].delay)
-        cell_delay.append(cell_delay_things(cell_delay_fall[q].cell, maxFallRise, 'none','none'))
+        for q in range(len(cell_delay_fall)):
+            maxFallRise = max(cell_delay_fall[q].delay, cell_delay_rise[q].delay)
+            cell_delay.append(cell_delay_things(cell_delay_fall[q].cell, maxFallRise, 'none','none'))
 
-    for g in range(len(cell_delay)):
-        if (cell_delay[g].delay > float(maxDelay)):
-            cell_delay[g] = cell_delay[g]._replace(status = "Violating")
-        else:
-            cell_delay[g] = cell_delay[g]._replace(status = "Not Violating")
+        for g in range(len(cell_delay)):
+            if (cell_delay[g].delay > float(maxDelay)):
+                cell_delay[g] = cell_delay[g]._replace(status = "Violating")
+            else:
+                cell_delay[g] = cell_delay[g]._replace(status = "Not Violating")
 
-        ###############printing the recalculated delay to a file###############
-        with open('Bonus/Cell_delay_after_cloning.txt', 'w') as f:
-            for item5 in range(len(cell_delay)):
-                f.write(str(cell_delay[item5].cell)+"     "+str(cell_delay[item5].delay)+  "\n")
+    ###############printing the recalculated delay to a file###############
+    with open('Bonus/Cell_delay_after_cloning.txt', 'w') as f:
+        for item5 in range(len(cell_delay)):
+            f.write(str(cell_delay[item5].cell)+"     "+str(cell_delay[item5].delay)+  "\n")
 
-    return functions
+
+    # fancounter = -1
+    # count  = 0
+    # FanoutCouple = namedtuple('Fanout', ['cell', 'fanout', 'status'])
+    # Fanoutreturn = []
+    # for l in range(len(otherallpins)):
+    #     if (otherallpins[l].direction=="output"):
+    #         count = count + 1
+    #         for h in range(len(otherallpins)):
+    #             if (otherallpins[h].parameter == otherallpins[l].parameter):
+    #                 fancounter = fancounter + 1
+    #         Fanoutreturn.append(FanoutCouple(otherallpins[l].cell,fancounter,"none")) #calculating the fanout of each cell before enhancement
+    #         fancounter = -1
+
+    # #checking wether or not the Fanout of each cell violates the maximum fanout
+    # for g in range(len(Fanoutreturn)):
+    #     if (Fanoutreturn[g].fanout > maxFanout):
+    #         Fanoutreturn[g] = Fanoutreturn[g]._replace(status = "Violating")
+    #     else:
+    #         Fanoutreturn[g] = Fanoutreturn[g]._replace(status = "Not Violating")
+    
+    # stopingflag = True
+
+    # for pl in range(len(Fanoutreturn)):
+    #     if(Fanoutreturn[pl].status == "Violating"):
+    #         stopingflag = False
+
+
+    return Fanoutreturn, stopingflag
 ##################################Cloning######################################
 
 
 ##########PICK##################
 if(int(option) ==1):
     n = sizeup()    ##do sizing up
-
+    with open('Run/SizedUp.txt', 'w') as f:
+        for sizeu in functions:
+            f.write(str(sizeu)+  "\n")
     #######Recalculating the delay after sizing up for the bonus########
     allpins2 = allpins.copy()
     rrrr = namedtuple('rrrr', 'originalgate newcell newgate library inputcap')
@@ -775,6 +841,7 @@ if(int(option) ==1):
         CellwithLoadsu.append(Fanout4su(functions[f].split(' ')[1], FanoutSumsu, 'none', 'none'))
         FanoutSumsu = 0
 
+    # print(allpins2)
     for u in range(len(CellwithLoadsu)):
         for g in range(len(allpins2)):
             if(CellwithLoadsu[u].cell == allpins2[g].cell):
@@ -794,6 +861,7 @@ if(int(option) ==1):
     cell_delay_rise = []
     cell_delay_fall = []
     cell_delay = []
+    # print(CellwithLoadsu)
     for i in range(len(CellwithLoadsu)):
         cellgroup = library.get_group('cell', CellwithLoadsu[i].cell.split('_')[0])
         pin = cellgroup.get_group('pin', CellwithLoadsu[i].outputpin)
@@ -811,9 +879,8 @@ if(int(option) ==1):
         for j in range(len(timing_table_capacitance_rise[0])):
             if (CellwithLoadsu[i].load == timing_table_capacitance_rise[0][j]):
                 rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][j]
-                print("Rise Delay was set successfuly")
 
-        if(CellwithLoadsu[i].load == 0):   ##if the output wire of the cell is an output to the medule we take the middle delay from the table
+        if(CellwithLoadsu[i].load == 0):
             rise_delay = timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])]
             fall_delay = timing_table_values_fall[findMiddle(timing_table_transition_fall[0])][findMiddle(timing_table_capacitance_fall[0])]
             cell_delay_rise.append(cell_delay_things(CellwithLoadsu[i].cell, timing_table_values_rise[findMiddle(timing_table_transition_rise[0])][findMiddle(timing_table_capacitance_rise[0])], 'none','none'))
@@ -858,7 +925,18 @@ if(int(option) ==1):
             f.write(str(cell_delay[item6].cell)+"     "+str(cell_delay[item6].delay)+  "\n")
 
 elif(int(option) == 2):
-    cloned = Cloning(functions, dictList, allpins, Fanout)     ####performing cloning####
+    cloned, stopflag = Cloning(functions, dictList, allpins, Fanout)     ####performing cloning####
+    # clflag = True
+    # otherclflag == True
+    # indexclone = 0
+    # flaginc = 0
+    # print(stopflag)
+    while(stopflag == False):
+        cloned, stopflag = Cloning(functions, dictList, allpins, cloned)
+        #############printing the recalculated delay################
+    with open('violations.txt', 'w') as f:
+        for vv in cloned:
+            f.write(str(vv)+"\n")
 else:
     n = addBuffers()
     # print(n)
@@ -866,6 +944,9 @@ else:
     for j in range(len(n)):
         Bufout.append(n[j].BufferType+Buf[j].Buffername+" ( .A("+n[j].inputt+"), "+".Y("+n[j].output+"));")
     functions = functions + Bufout
+    with open('Run/AddingBuffers.txt', 'w') as f:
+        for sizeu in functions:
+            f.write(str(sizeu)+  "\n")
     dictList2 = []
     for code in functions:
         n2 = code.split(maxsplit=2)

@@ -1,0 +1,20 @@
+BUFX2 BUFX2_1 ( .A(fa0_s), .Y(s[0]) );
+
+BUFX2 BUFX2_2 ( .A(fa1_s), .Y(s[1]) );
+
+BUFX2 BUFX2_3 ( .A(fa2_s), .Y(s[2]) );
+
+BUFX2 BUFX2_4 ( .A(fa3_s), .Y(O_1) );
+
+INVX1 INVX1_1 ( .A(O_11), .Y(_4_) );
+
+OR2X2 OR2X2_1 ( .A(_4__), .B(O_11), .Y(_5_) );
+
+NAND2X1 NAND2X1_1 ( .A(_4__), .B(a[0]), .Y(_6_) );
+
+NAND3X1 NAND3X1_1 ( .A(_4_), .B(_6_), .C(_5_), .Y(_7_) );
+
+INVX1 INVX1_1_cloned4 (.A(O_1),.Y(_4__))
+
+BUFX2 BUFX2_4_cloned3 (.A(fa3_s),.Y(O_11))
+
